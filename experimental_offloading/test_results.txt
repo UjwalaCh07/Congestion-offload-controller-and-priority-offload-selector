@@ -1,0 +1,136 @@
+Experimental NoC SNN verification and generated-trace evaluation
+===============================================================
+
+Final verification performed with Icarus Verilog from:
+C:\Users\ujwal\OneDrive\Desktop\Capstone research\router2\rtl
+
+Tool status:
+- Icarus Verilog / vvp available.
+- Git was not available (`git` is not recognized), so `git status` and a
+  repository diff could not be produced.
+- Yosys and Quartus were unavailable; no synthesis, area, timing, power, or
+  utilization claims are made.
+- The final compilation commands below used `-g2012 -Wall`; no warnings were
+  emitted by the final runs.
+
+Regression results:
+- Offloading: PASS, 101 checks.
+- Directed SNN: PASS, 56 checks.
+- Existing ten-trace SNN/baseline methodology regression: PASS, 255 checks.
+- Family-separated 21-configuration parameter sweep: PASS, 20921 checks.
+- New 32-trace baseline/default-SNN/config-19 comparison: PASS, 9364 checks.
+- Invalid-parameter probe: expected `$fatal` at time 0, vvp exit code 1.
+
+Exact simulator commands:
+
+1. Offloading:
+   iverilog -g2012 -Wall -s tb_offloading -o experimental_offloading\offloading_test experimental_offloading\congestion_offload_controller.sv experimental_offloading\priority_offload_selector.sv experimental_offloading\tb_offloading.sv
+   vvp experimental_offloading\offloading_test
+   Result: PASS: 101 checks completed.
+
+2. Directed SNN:
+   iverilog -g2012 -Wall -s tb_snn_congestion_predictor -o experimental_offloading\snn_test experimental_offloading\snn_congestion_predictor.sv experimental_offloading\tb_snn_congestion_predictor.sv
+   vvp experimental_offloading\snn_test
+   Result: PASS: 56 SNN checks completed.
+
+3. Existing baseline methodology:
+   iverilog -g2012 -Wall -s tb_snn_baseline_comparison -o experimental_offloading\comparison_test experimental_offloading\snn_congestion_predictor.sv experimental_offloading\tb_snn_baseline_comparison.sv
+   vvp experimental_offloading\comparison_test
+   Result: PASS: 255 comparison checks completed.
+   SNN: TP=41 FP=13 TN=233 FN=33; precision=75.93%, recall=55.41%,
+   FPR=5.28%.
+   Rule baseline: TP=60 FP=24 TN=222 FN=14; precision=71.43%,
+   recall=81.08%, FPR=9.76%.
+
+4. Updated parameter sweep:
+   iverilog -g2012 -Wall -s tb_snn_parameter_sweep -o experimental_offloading\sweep_test experimental_offloading\snn_traffic_traces.sv experimental_offloading\snn_congestion_predictor.sv experimental_offloading\tb_snn_parameter_sweep.sv
+   vvp experimental_offloading\sweep_test
+   Result: PASS: 20921 parameter-sweep checks completed.
+   Split: tuning IDs 0-23 (families 0-5), held-out IDs 24-31
+   (families 6-7). Each partition uses complete traces.
+   Selected config 5 by tuning micro-F1=0.627986. It differs from defaults
+   only in OUTPUT_THRESHOLD=4; no default RTL parameter was changed.
+   Tuning config 5: TP=184 FP=163 TN=1038 FN=55; precision=53.03%,
+   recall=76.99%, FPR=13.57%; early warning=4/16 eligible, average lead
+   2.00 windows; detection=21/21 eligible, mean delay=0.05 windows.
+   Held-out config 5: TP=80 FP=18 TN=352 FN=30; precision=81.63%,
+   recall=72.73%, FPR=4.86%; early warning=N/A (0/14 eligible);
+   detection=14/14, mean delay=0.14 windows.
+   The earlier small-trace sweep selected config 19. That result is
+   superseded by this family-separated sweep; config 19 was not selected
+   using held-out data.
+
+5. Three-way generated-trace comparison:
+   iverilog -g2012 -Wall -s tb_snn_generalization -o experimental_offloading\generalization_test experimental_offloading\snn_traffic_traces.sv experimental_offloading\snn_congestion_predictor.sv experimental_offloading\tb_snn_generalization.sv
+   vvp experimental_offloading\generalization_test
+   Result: PASS: 9364 generalization checks completed.
+   Trace setup: 32 traces of 32 observations, 30 scored windows per trace,
+   horizon=2, occupancy event threshold=12. Tuning has 24 complete traces /
+   1440 direction-windows; held out has 8 traces / 480 direction-windows.
+   Labels use occupancy >=12 in either of the next two observations.
+
+   Aggregate metrics:
+   Partition  Method       Windows TP  FP   TN   FN   Precision Recall  FPR
+   Tuning     Rule         1440    185 83   1118 54   69.03%    77.41%  6.91%
+   Tuning     Default SNN  1440    123 90   1111 116  57.75%    51.46%  7.49%
+   Tuning     Config 19    1440    164 165  1036 75   49.85%    68.62% 13.74%
+   Held out   Rule          480     82 14    356 28   85.42%    74.55%  3.78%
+   Held out   Default SNN   480     46 8     362 64   85.19%    41.82%  2.16%
+   Held out   Config 19     480     68 26    344 42   72.34%    61.82%  7.03%
+
+   Early warning and detection delay (measured pairs / eligible crossings;
+   averages are over measured pairs):
+   Tuning Rule:        lead 4/16, 2.00 windows; delay 21/21, 0.00 windows.
+   Tuning Default SNN: lead 4/16, 2.00 windows; delay 17/21, 1.59 windows.
+   Tuning Config 19:   lead 4/16, 1.50 windows; delay 21/21, 0.81 windows.
+   Held-out Rule:      lead N/A (0/14); delay 14/14, 0.00 windows.
+   Held-out Default:   lead N/A (0/14); delay 14/14, 1.14 windows.
+   Held-out Config 19: lead N/A (0/14); delay 14/14, 1.00 windows.
+
+   Family-level TP/FP/TN/FN, each family contains four traces and 240
+   scored direction-windows:
+   Family                    Method       TP FP TN  FN
+   RAMP (tuning)             Rule          66 12 162  0
+                             Default SNN   50  7 167 16
+                             Config 19     60 12 162  6
+   SHORT_BURST (tuning)      Rule           3  4 225  8
+                             Default SNN    1  1 228 10
+                             Config 19      1  6 223 10
+   SUSTAINED (tuning)        Rule          45  5 180 10
+                             Default SNN   28  4 181 27
+                             Config 19     39  9 176 16
+   RECOVERY (tuning)         Rule          61 10 169  0
+                             Default SNN   41  8 171 20
+                             Config 19     57 14 165  4
+   REPEATED_BURSTS (tuning)  Rule          10 19 175 36
+                             Default SNN    3  4 190 43
+                             Config 19      7 27 167 39
+   STABLE_HIGH (tuning)      Rule           0 33 207  0
+                             Default SNN    0 66 174  0
+                             Config 19      0 97 143  0
+   DIRECTIONAL_ASYMMETRY    Rule          36  6 186 12
+                             Default SNN   20  4 188 28
+                             Config 19     30 10 182 18
+   STAGGERED_ONSET (heldout) Rule          46  8 170 16
+                             Default SNN   26  4 174 36
+                             Config 19     38 16 162 24
+
+6. Expected invalid-parameter probe:
+   iverilog -g2012 -Wall -s tb_snn_invalid_parameter -o experimental_offloading\invalid_parameter_test experimental_offloading\snn_congestion_predictor.sv experimental_offloading\tb_snn_congestion_predictor.sv
+   vvp experimental_offloading\invalid_parameter_test
+   Observed: FATAL at time 0, OCCUPANCY_THRESHOLD does not fit
+   OCCUPANCY_WIDTH; expected vvp exit code 1.
+
+Limitations:
+- All generated traces are synthetic and deterministic; they are not
+  representative measurements of realistic NoC workloads.
+- The held-out set has only two families and eight traces, and is a deliberate
+  distribution shift. These numbers do not establish generalization or SNN
+  superiority.
+- The rule, default SNN, and config 19 receive identical features/windows and
+  labels. Family separation prevents near-identical generated variants from
+  crossing the tuning/held-out boundary.
+- Config 5 is a tuning-set selection only; no parameter was copied into
+  production/default predictor RTL.
+- No router integration, deadlock-safety proof, or hardware-cost measurement
+  was performed.
